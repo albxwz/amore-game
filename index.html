@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#80074C">
+<title>История двух молодых</title>
+<meta property="og:title" content="&#8203;">
+<meta property="og:description" content="&#8203;">
+<meta property="og:image" content="ukiuk.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="&#8203;">
+<meta name="twitter:description" content="&#8203;">
+<meta name="twitter:image" content="ukiuk.jpg">
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="world.css">
+</head>
+<body>
+
+<!-- ===== Экран загрузки (блокирует всё, пока не загрузятся все файлы) ===== -->
+<div class="loading-screen" id="loading-screen">
+  <div class="loading-box">
+    <div class="loading-heart">❤︎</div>
+    <p class="loading-title">Загрузка…</p>
+    <div class="loading-bar"><div class="loading-bar-fill" id="loading-bar-fill"></div></div>
+    <p class="loading-percent" id="loading-percent">0%</p>
+    <p class="loading-warning">Пожалуйста, подождите и не обновляйте и не закрывайте страницу</p>
+  </div>
+</div>
+
+<!-- ===== Подсказка "поверните телефон" - поверх всей игры, пока телефон
+     физически портретный (чистый CSS, см. .rotate-hint-overlay) ===== -->
+<div class="rotate-hint-overlay">
+  <div class="rotate-hint-icon">📱↻</div>
+  <p>Поверните телефон горизонтально для игры</p>
+</div>
+
+<div id="app">
+
+  <!-- ===== Главный экран ===== -->
+  <section class="screen" data-screen="home">
+    <div class="hearts-bg" id="home-hearts"></div>
+    <div class="home-content">
+      <div class="logo-wrap">
+        <img id="logo-img" class="logo-img" src="logo.png" alt="Логотип">
+        <div class="placeholder-box placeholder-box--logo" id="logo-placeholder" hidden>❤︎</div>
+      </div>
+      <button class="btn btn--primary" id="start-game-btn">Начать игру</button>
+    </div>
+  </section>
+
+  <!-- ===== Экран 2D-мира: персонаж идёт по тропинке между этапами ===== -->
+  <section class="screen" data-screen="world">
+    <div class="world-viewport" id="world-viewport">
+      <canvas class="meadow-canvas meadow-canvas--back" id="meadow-back"></canvas>
+      <div class="world-track" id="world-track">
+        <div class="world-object world-object--photo" data-stage="1" data-type="quiz">
+          <div class="world-object-flag">✓</div>
+          <div class="world-object-photo"><img src="1.png" alt="" style="aspect-ratio:2400/1792"></div>
+          <button class="btn btn--cta cta-pulse world-task-btn" id="world-task-btn-1" hidden>Задание 1</button>
+        </div>
+        <div class="world-decor">
+          <canvas class="world-lamp-canvas"></canvas>
+          <div class="world-decor-bench"><img src="bench.png" alt="" style="aspect-ratio:735/513"></div>
+          <canvas class="world-lamp-canvas"></canvas>
+          <canvas class="world-garland-canvas"></canvas>
+        </div>
+        <div class="world-object world-object--photo" data-stage="2" data-type="puzzle">
+          <div class="world-object-flag">✓</div>
+          <div class="world-object-photo"><img src="2.png" alt="" style="aspect-ratio:2048/2048"></div>
+          <button class="btn btn--cta cta-pulse world-task-btn" id="world-task-btn-2" hidden>Задание 2</button>
+        </div>
+        <div class="world-decor">
+          <canvas class="world-lamp-canvas"></canvas>
+          <div class="world-decor-bench"><img src="bench.png" alt="" style="aspect-ratio:735/513"></div>
+          <canvas class="world-lamp-canvas"></canvas>
+          <canvas class="world-garland-canvas"></canvas>
+        </div>
+        <div class="world-object world-object--photo" data-stage="3" data-type="cards">
+          <div class="world-object-flag">✓</div>
+          <div class="world-object-photo"><img src="3.png" alt="" style="aspect-ratio:2400/1792"></div>
+          <button class="btn btn--cta cta-pulse world-task-btn" id="world-task-btn-3" hidden>Задание 3</button>
+        </div>
+        <div class="world-decor">
+          <canvas class="world-lamp-canvas"></canvas>
+          <div class="world-decor-bench"><img src="bench.png" alt="" style="aspect-ratio:735/513"></div>
+          <canvas class="world-lamp-canvas"></canvas>
+          <canvas class="world-garland-canvas"></canvas>
+        </div>
+        <div class="world-object world-object--photo" data-stage="4" data-type="message">
+          <div class="world-object-flag">✓</div>
+          <div class="world-object-photo"><img src="4.png" alt="" style="aspect-ratio:1536/2752"></div>
+          <button class="btn btn--cta cta-pulse world-task-btn" id="world-task-btn-4" hidden>Задание 4</button>
+        </div>
+      </div>
+
+      <!-- Персонаж - НЕ внутри world-track: он всегда по центру вьюпорта,
+           камера (track + фон) едет под ним, а не наоборот. 3 фото одной
+           пары: анфас (стоит на месте) + 2 кадра ходьбы (world.js их
+           переключает во время движения). -->
+      <div class="world-character" id="world-character">
+        <img class="char-frame char-frame--idle" src="al.png" alt="">
+        <img class="char-frame char-frame--walk1" src="on.png" alt="">
+        <img class="char-frame char-frame--walk2" src="sol.png" alt="">
+      </div>
+      <canvas class="meadow-canvas meadow-canvas--front" id="meadow-front"></canvas>
+    </div>
+
+    <div class="world-controls" id="world-controls">
+      <button class="world-move-btn world-move-btn--left" id="world-btn-left" aria-label="Налево">◀</button>
+      <button class="world-move-btn world-move-btn--right" id="world-btn-right" aria-label="Направо">▶</button>
+    </div>
+  </section>
+
+  <!-- ===== Экран фото (общий для всех этапов) ===== -->
+  <section class="screen" data-screen="photo">
+    <div class="photo-frame photo-frame--solid" id="photo-frame">
+      <img id="stage-photo-img" class="photo-img" src="" alt="">
+      <div class="placeholder-box placeholder-box--photo" id="stage-photo-placeholder" hidden>Фото будет здесь</div>
+    </div>
+
+    <div class="snow-layer" id="photo-snow" hidden></div>
+
+    <!-- только для 1-го этапа: фото по краям экрана -->
+    <div class="quiz-side quiz-side--girl" id="quiz-side-girl-wrap">
+      <img id="quiz-side-girl" class="quiz-side-img" src="girl.png" alt="">
+      <div class="placeholder-box placeholder-box--side" id="quiz-side-girl-placeholder" hidden>👩</div>
+    </div>
+    <div class="quiz-side quiz-side--boy" id="quiz-side-boy-wrap">
+      <img id="quiz-side-boy" class="quiz-side-img" src="boy.png" alt="">
+      <div class="placeholder-box placeholder-box--side" id="quiz-side-boy-placeholder" hidden>🧑</div>
+    </div>
+
+    <!-- только для 1-го этапа: диалог-викторина -->
+    <div class="quiz-sheet" id="quiz-sheet" hidden>
+      <div class="quiz-counter" id="quiz-counter">Вопрос 1 из 3</div>
+      <div class="quiz-question" id="quiz-question"></div>
+      <div class="quiz-answers" id="quiz-answers"></div>
+      <div class="quiz-feedback" id="quiz-feedback" hidden>Попробуй ещё раз ❤️</div>
+    </div>
+
+    <!-- только для 1-го этапа: конверт -->
+    <div class="envelope-wrap" id="envelope-wrap" hidden>
+      <img class="envelope" id="envelope" src="envelope.jpg" alt="Конверт">
+      <div class="envelope-hint">Нажми, чтобы открыть</div>
+    </div>
+  </section>
+
+  <!-- ===== Экран пазла (2-й этап) ===== -->
+  <section class="screen" data-screen="puzzle">
+    <div class="hearts-bg" id="puzzle-hearts"></div>
+    <div class="puzzle-wrap">
+      <div class="puzzle-stack">
+        <div class="puzzle-container" id="puzzle-container">
+          <div class="puzzle-grid" id="puzzle-grid"></div>
+          <div class="puzzle-hint-overlay" id="puzzle-hint-overlay"></div>
+        </div>
+        <button class="btn btn--primary" id="puzzle-continue-btn" hidden>Следующее задание</button>
+      </div>
+      <span class="puzzle-moves" id="puzzle-move-count">Ходов: 0</span>
+      <button class="btn btn--small" id="puzzle-hint-btn">Подсказка</button>
+    </div>
+  </section>
+
+  <!-- ===== Экран карточек с вопросами (доп. задание 2-го этапа) ===== -->
+  <section class="screen" data-screen="cards">
+    <div class="hearts-bg" id="cards-hearts"></div>
+    <div class="cards-view" id="cards-view">
+      <div class="question-card" id="question-card">
+        <div class="question-card-counter" id="question-card-counter">Вопрос 1 из 5</div>
+        <div class="question-card-text" id="question-card-text"></div>
+      </div>
+      <button class="btn btn--primary" id="cards-next-btn">Следующий</button>
+    </div>
+  </section>
+
+  <!-- ===== Экран послания в будущее (3-й этап) ===== -->
+  <section class="screen" data-screen="message">
+    <div class="hearts-bg" id="message-hearts"></div>
+    <div class="message-scroll">
+      <div class="message-wrap">
+        <div class="message-task">
+          <h2>Что бы вы хотели сказать самим себе в будущем?</h2>
+          <p>Представьте, что прошло 5 или 10 лет. Какими вы стали? О чём мечтаете, чего уже добились и что хотели бы пожелать себе сегодняшним?</p>
+          <p>Оставьте послание самим себе в будущее, которое однажды вы сможете перечитать вместе и вспомнить этот особенный момент.</p>
+        </div>
+        <textarea id="future-letter-textarea" class="future-letter-textarea" placeholder="Дорогие мы из будущего…"></textarea>
+        <div class="message-actions">
+          <button class="btn btn--primary" id="save-pdf-btn">Сохранить в PDF</button>
+          <p class="pdf-ios-hint" id="pdf-ios-hint" hidden>Нажмите «Поделиться» → «Сохранить в Файлы»</p>
+        </div>
+        <button class="btn btn--primary" id="message-finish-btn" hidden>Завершить</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Финальный экран ===== -->
+  <section class="screen" data-screen="final">
+    <!-- Тот же фон "Закатный луг", что на экране локаций (world) - отдельный
+         независимый Meadow.mount(), просто на других canvas. -->
+    <div class="final-bg-viewport" id="final-bg-viewport">
+      <canvas class="meadow-canvas meadow-canvas--back" id="final-meadow-back"></canvas>
+      <canvas class="meadow-canvas meadow-canvas--front" id="final-meadow-front"></canvas>
+    </div>
+    <div class="hearts-bg" id="final-hearts"></div>
+    <div class="final-content">
+      <h1 id="final-title">Поздравляем! Вы успешно прошли игру ❤️</h1>
+      <div class="final-actions">
+        <button class="btn btn--primary" id="download-again-btn">Скачать послание ещё раз</button>
+        <button class="btn btn--secondary" id="restart-btn">Начать заново</button>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /#app -->
+
+<!-- ===== Модальные окна ===== -->
+<div class="modal" id="modal-rules" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <h2>Правила игры</h2>
+    <p>Вам предстоит пройти 4 этапа. Чтобы победить в игре, необходимо успешно пройти все четыре этапа.</p>
+    <p>Готовы?</p>
+    <button class="btn btn--primary" id="rules-start-btn">Начать 1-й этап</button>
+  </div>
+</div>
+
+<div class="modal" id="modal-resume" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <p id="resume-text">Продолжить с этапа?</p>
+    <div class="modal-actions">
+      <button class="btn btn--primary" id="resume-continue-btn">Продолжить</button>
+      <button class="btn btn--secondary" id="resume-restart-btn">Начать заново</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-letter" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="letter-paper">
+    <div class="letter-paper-body" id="letter-paper-body"></div>
+    <button class="btn btn--primary" id="letter-continue-btn">Перейти к следующему этапу</button>
+  </div>
+</div>
+
+<!-- ===== Постоянные элементы интерфейса ===== -->
+<div class="stage-indicator" id="stage-indicator" hidden>Этап 1 из 4</div>
+<button class="mute-btn" id="mute-toggle" aria-label="Выключить звук">🔊</button>
+
+<!-- ===== Канвас салюта ===== -->
+<canvas id="fireworks-canvas"></canvas>
+
+<!-- ===== Скрытый шаблон страницы PDF (для html2canvas) ===== -->
+<div id="pdf-letter-page">
+  <div id="pdf-title">Послание в будущее</div>
+  <div id="pdf-body"></div>
+  <div id="pdf-date"></div>
+</div>
+
+<script src="html2canvas.min.js" defer></script>
+<script src="jspdf.umd.min.js" defer></script>
+<script src="audio.js" defer></script>
+<script src="fireworks.js" defer></script>
+<script src="quiz.js" defer></script>
+<script src="puzzle.js" defer></script>
+<script src="message.js" defer></script>
+<script src="city.js" defer></script>
+<script src="meadow.js" defer></script>
+<script src="lamp.js" defer></script>
+<script src="world.js" defer></script>
+<script src="main.js" defer></script>
+</body>
+</html>
