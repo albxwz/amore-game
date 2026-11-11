@@ -1,0 +1,635 @@
+/* ===================== Переменные / палитра ===================== */
+:root {
+  --color-primary: #80074C;
+  --color-secondary: #F2FFA4;
+  --color-primary-dark: #5C0436;
+  --color-primary-light: #B3477F;
+  --color-bg: #FDFFE8;
+  --color-bg-alt: #F8E6EF;
+  --color-text: #3D0224;
+  --color-gold: #FFE27A;
+
+  --font-heading: 'Cormorant Garamond', serif;
+  --font-script: 'Marck Script', cursive;
+  --font-body: 'Montserrat', sans-serif;
+
+  --transition-screen: .6s cubic-bezier(.22,.9,.3,1);
+}
+
+/* ===================== Сброс / база ===================== */
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; min-height: 100%;
+  overflow-x: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ===================== Телефон: требуем альбомную ориентацию =====================
+   Раньше игра визуально разворачивала страницу через CSS, пока телефон
+   физически портретный (имитация альбомного вида без поворота устройства).
+   Оказалось слишком хрупко - орientation-API на разных телефонах/браузерах
+   (особенно iOS) не всегда даёт надёжный угол, из-за чего элементы иногда
+   оказывались не на своих местах. Теперь - классический способ: пока
+   телефон держат портретно, показываем подсказку "поверните телефон"
+   (.rotate-hint-overlay ниже, в самом конце файла) поверх игры; когда
+   телефон физически альбомный - подсказка прячется, игра показывается БЕЗ
+   каких-либо мобильных переопределений (та же раскладка, что на десктопе
+   такого же размера экрана). */
+:root { --vw: 100vw; --vh: 100vh; }
+img { max-width: 100%; display: block; }
+button {
+  font-family: var(--font-body);
+  border: none; cursor: pointer; background: none;
+}
+textarea { font-family: var(--font-body); }
+h1, h2 { font-family: var(--font-heading); color: var(--color-primary); margin: 0 0 .5em; }
+
+/* ===================== Зерно (grain) ===================== */
+body::after {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 9000;
+  opacity: .035;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 180px 180px;
+}
+
+/* ===================== Кнопки ===================== */
+.btn {
+  display: inline-block;
+  padding: .85em 2em;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: .02em;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.btn:active { transform: scale(.96); }
+.btn--primary {
+  background: #80074C;
+  color: #F2FFA4;
+  border: 2px solid #F2FFA4;
+  box-shadow: 0 8px 26px rgba(61,2,36,.5), 0 0 6px 1px rgba(242,255,164,.35), 0 0 0 0 rgba(242,255,164,.25);
+  animation: ctaPulse 1.6s ease-in-out infinite;
+}
+.btn--primary:hover { filter: brightness(1.08); }
+.btn--primary:active { background: var(--color-primary-dark); }
+.btn--secondary {
+  background: var(--color-bg-alt);
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary-light);
+}
+.btn--small {
+  padding: .5em 1.2em;
+  font-size: .85rem;
+  background: var(--color-bg-alt);
+  color: var(--color-primary);
+  border-radius: 999px;
+}
+.btn--cta { font-size: 1.1rem; padding: 1em 2.4em; }
+.btn[disabled] { opacity: .5; pointer-events: none; }
+
+.cta-pulse {
+  animation: ctaPulse 1.6s ease-in-out infinite;
+}
+@keyframes ctaPulse {
+  0%, 100% {
+    border-color: rgba(242,255,164,.55);
+    box-shadow: 0 8px 26px rgba(61,2,36,.5), 0 0 6px 1px rgba(242,255,164,.35), 0 0 0 0 rgba(242,255,164,.25);
+  }
+  50% {
+    border-color: #F2FFA4;
+    box-shadow: 0 8px 34px rgba(61,2,36,.6), 0 0 22px 5px rgba(242,255,164,.95), 0 0 0 7px rgba(242,255,164,.18);
+  }
+}
+
+/* ===================== Экраны ===================== */
+#app { position: relative; width: 100%; height: 100vh; overflow: hidden; }
+
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  opacity: 0; visibility: hidden;
+  transform: translateY(24px);
+  transition: opacity var(--transition-screen), transform var(--transition-screen), visibility 0s;
+  z-index: 1;
+}
+.screen--active {
+  opacity: 1; visibility: visible;
+  transform: translateY(0);
+  z-index: 2;
+}
+.screen--leaving {
+  opacity: 0;
+  transform: translateY(-16px);
+  z-index: 1;
+}
+
+/* ===================== Плавающие сердечки (фон) ===================== */
+.hearts-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.hearts-bg .heart {
+  position: absolute;
+  bottom: -10%;
+  left: var(--x, 50%);
+  font-size: var(--size, 22px);
+  color: var(--color-primary-light);
+  opacity: .55;
+  animation: floatHeart var(--duration, 14s) linear var(--delay, 0s) infinite;
+}
+@keyframes floatHeart {
+  0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: .6; }
+  50%  { transform: translateY(-55vh) translateX(12px) rotate(10deg); }
+  90%  { opacity: .4; }
+  100% { transform: translateY(-110vh) translateX(-10px) rotate(-8deg); opacity: 0; }
+}
+
+/* ===================== Главный экран ===================== */
+.screen[data-screen="home"] {
+  background-image: url('glav.jpg');
+  background-size: cover;
+  background-position: center;
+}
+.home-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2.2em; text-align: center; padding: 1em; }
+.logo-wrap { width: min(220px, 55vw); }
+.logo-img { width: 100%; }
+
+/* ===================== Placeholder-блоки ===================== */
+.placeholder-box {
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  background: linear-gradient(135deg, var(--color-bg-alt), var(--color-primary-light) 160%);
+  color: var(--color-primary);
+  font-family: var(--font-heading);
+  border-radius: 18px;
+}
+.placeholder-box--logo { width: 100%; aspect-ratio: 1; border-radius: 50%; font-size: 3rem; }
+.placeholder-box--photo { position: absolute; inset: 0; font-size: 1.2rem; }
+.placeholder-box--avatar { width: 100%; height: 100%; border-radius: 50%; font-size: 2.6rem; }
+
+/* ===================== Фото экран ===================== */
+:root { --photo-frame-bg: var(--color-bg-alt); }
+.photo-frame {
+  position: absolute; inset: 0;
+  z-index: 0;
+  width: 100%; height: 100%;
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--photo-frame-bg);
+  opacity: 0; transform: scale(1.06);
+  animation: photoIn .8s cubic-bezier(.22,.9,.3,1) forwards;
+}
+@keyframes photoIn { to { opacity: 1; transform: scale(1); } }
+.photo-frame--solid { background: var(--photo-frame-bg); }
+.photo-frame--blurred::before {
+  content: ""; position: absolute; inset: -20%;
+  background: inherit;
+  filter: blur(26px) brightness(.9);
+  z-index: 0;
+}
+.photo-img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+
+.snow-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.snow-layer .flake {
+  position: absolute;
+  top: -6%;
+  left: var(--x, 50%);
+  width: var(--size, 6px); height: var(--size, 6px);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 5px rgba(255,255,255,.7);
+  opacity: 0;
+  animation: snowFall var(--duration, 12s) linear var(--delay, 0s) infinite;
+}
+@keyframes snowFall {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  8% { opacity: .85; }
+  92% { opacity: .85; }
+  100% { transform: translateY(118vh) translateX(var(--drift, 20px)); opacity: 0; }
+}
+
+/* ===================== Викторина (bottom sheet) ===================== */
+.quiz-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  max-width: 560px;
+  margin-left: auto; margin-right: auto;
+  background: rgba(248,230,239,.72);
+  backdrop-filter: blur(16px);
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -8px 30px rgba(61,2,36,.2);
+  padding: 1.4em 1.1em calc(1.4em + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform .5s cubic-bezier(.22,.9,.3,1);
+  z-index: 2;
+}
+.quiz-sheet.is-visible { transform: translateY(0); }
+.quiz-counter { font-size: .78rem; color: var(--color-primary); opacity: .75; margin-bottom: .3em; max-width: 560px; margin-left: auto; margin-right: auto; }
+.quiz-question { font-weight: 600; margin-bottom: .7em; line-height: 1.35; max-width: 560px; margin-left: auto; margin-right: auto; }
+.quiz-answers { display: flex; flex-direction: column; gap: .55em; max-width: 560px; margin: 0 auto; }
+.quiz-answer-btn {
+  text-align: left;
+  padding: .7em .9em;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--color-text);
+  font-size: .92rem;
+  line-height: 1.3;
+  border: 1.5px solid var(--color-bg-alt);
+  transition: transform .12s ease, background .25s ease, border-color .25s ease;
+}
+.quiz-answer-btn.is-correct {
+  background: linear-gradient(135deg, var(--color-secondary), var(--color-gold));
+  border-color: var(--color-gold);
+  color: var(--color-primary-dark);
+}
+.quiz-answer-btn.is-wrong {
+  animation: shake .4s ease;
+  background: #ffe3e3;
+  border-color: #e38b8b;
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.quiz-feedback { margin-top: .6em; font-size: .85rem; color: var(--color-primary); max-width: 560px; margin-left: auto; margin-right: auto; }
+
+/* ===================== Фото жігіт/қыз по краям экрана, внизу (1 этап) ===================== */
+.quiz-side {
+  position: absolute;
+  bottom: 0;
+  height: 82vh;
+  width: 80vw;
+  max-width: 380px;
+  min-width: 170px;
+  z-index: 3;
+  opacity: 0;
+  filter: drop-shadow(0 10px 22px rgba(61,2,36,.45));
+  transition: opacity .5s cubic-bezier(.22,.9,.3,1), transform .5s cubic-bezier(.22,.9,.3,1);
+  pointer-events: none;
+}
+.quiz-side--girl { left: 0; transform: translateX(-100%); }
+.quiz-side--boy { right: 0; transform: translateX(100%); }
+.quiz-side.is-visible { opacity: 1; transform: translateX(0); }
+.quiz-side-img { width: 100%; height: 100%; object-fit: contain; object-position: bottom; display: block; }
+.placeholder-box--side { position: absolute; inset: 0; font-size: 2.3rem; }
+.mini-heart {
+  position: absolute; pointer-events: none;
+  color: var(--color-primary-light);
+  animation: miniHeartFloat .9s ease-out forwards;
+  font-size: 1rem;
+}
+@keyframes miniHeartFloat {
+  0% { transform: translateY(0) scale(.6); opacity: 1; }
+  100% { transform: translateY(-46px) scale(1.2); opacity: 0; }
+}
+
+/* ===================== Конверт ===================== */
+.envelope-wrap {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1em;
+  z-index: 2;
+}
+.envelope {
+  display: block;
+  width: 230px;
+  height: auto;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 16px 36px rgba(61,2,36,.45), 0 0 0 1px rgba(242,255,164,.3);
+  animation: envelopeWobble 3.2s ease-in-out infinite;
+  transition: opacity .5s ease, transform .5s cubic-bezier(.22,.9,.3,1);
+}
+@keyframes envelopeWobble {
+  0%,100% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(1.5deg) translateY(-6px); }
+}
+.envelope.is-open {
+  opacity: 0;
+  transform: scale(.85) translateY(10px);
+  pointer-events: none;
+  animation: none;
+}
+.envelope-hint {
+  background: none;
+  font-size: .9rem;
+  color: var(--color-secondary);
+  text-shadow: 0 1px 6px rgba(61,2,36,.7), 0 1px 2px rgba(61,2,36,.9);
+  opacity: .95;
+}
+
+/* ===================== Модальные окна ===================== */
+.modal { position: fixed; inset: 0; z-index: 500; display: flex; align-items: center; justify-content: center; }
+.modal[hidden] { display: none; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(61,2,36,.45); backdrop-filter: blur(6px); }
+.modal-box {
+  position: relative; z-index: 1;
+  width: min(86vw, 420px);
+  background: var(--color-bg);
+  border-radius: 22px;
+  padding: 1.8em 1.6em;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(61,2,36,.4);
+  animation: modalIn .35s cubic-bezier(.22,.9,.3,1);
+}
+@keyframes modalIn { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: scale(1); } }
+.modal-box p { line-height: 1.5; }
+.modal-actions { display: flex; gap: .7em; justify-content: center; margin-top: 1em; flex-wrap: wrap; }
+
+/* ===================== Письмо (1 этап) ===================== */
+.letter-paper {
+  position: relative; z-index: 1;
+  width: min(90vw, 480px);
+  max-height: 82vh;
+  display: flex; flex-direction: column;
+  background: linear-gradient(180deg, #fffaf0, #fdf4e3);
+  border-radius: 10px;
+  padding: 1.8em 1.6em 1.6em;
+  box-shadow: 0 24px 60px rgba(61,2,36,.45);
+  animation: modalIn .4s cubic-bezier(.22,.9,.3,1);
+}
+.letter-paper-body {
+  overflow-y: auto;
+  font-family: var(--font-script);
+  font-size: 1.25rem;
+  line-height: 1.55;
+  color: var(--color-text);
+  margin-bottom: 1.2em;
+  flex: 1;
+}
+.letter-paper-body p { margin: 0 0 .8em; }
+.letter-paper .btn { align-self: center; }
+
+/* ===================== Пазл ===================== */
+.screen[data-screen="puzzle"] {
+  background-image: linear-gradient(rgba(10,2,16,.5), rgba(10,2,16,.5)), url('stage2_photo.jpg');
+  background-size: cover;
+  background-position: center;
+}
+.puzzle-wrap { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 1.2em; padding: 1em; width: 100%; }
+.puzzle-stack { display: flex; flex-direction: column; align-items: center; gap: .8em; }
+.puzzle-container { position: relative; width: min(86vw, 420px); aspect-ratio: 1; }
+.puzzle-grid {
+  position: relative;
+  width: 100%; height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 14px 34px rgba(61,2,36,.3);
+  background: var(--color-primary-dark);
+}
+.puzzle-slot { position: relative; overflow: hidden; }
+.puzzle-piece {
+  width: 100%; height: 100%;
+  background-size: 300% 300%;
+  cursor: pointer;
+  transition: background-position .35s ease, transform .2s ease, box-shadow .2s ease;
+  touch-action: none;
+}
+.puzzle-slot.is-selected .puzzle-piece { box-shadow: inset 0 0 0 4px var(--color-secondary); transform: scale(.94); }
+.puzzle-slot.is-correct .puzzle-piece { box-shadow: inset 0 0 0 0 transparent; }
+.puzzle-slot.is-dragging .puzzle-piece { z-index: 5; }
+.puzzle-hint-overlay {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0; pointer-events: none;
+  border-radius: 16px;
+  transition: opacity .15s ease;
+}
+.puzzle-hint-overlay.is-visible { opacity: .6; }
+.puzzle-container.is-solved .puzzle-grid { animation: puzzleSolvedGlow 1s ease; }
+@keyframes puzzleSolvedGlow {
+  0%,100% { box-shadow: 0 14px 34px rgba(61,2,36,.3); }
+  50% { box-shadow: 0 14px 50px rgba(242,255,164,.8); }
+}
+.puzzle-moves { font-size: .85rem; color: var(--color-primary); opacity: .8; }
+
+/* ===================== Карточки с вопросами (доп. задание 2 этапа) ===================== */
+.screen[data-screen="cards"] {
+  background-image: linear-gradient(rgba(10,2,16,.5), rgba(10,2,16,.5)), url('stage3_photo.jpg');
+  background-size: cover;
+  background-position: center;
+}
+.cards-view { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 1.8em; }
+.question-card {
+  width: min(78vw, 320px);
+  aspect-ratio: 4/5;
+  border-radius: 28px;
+  background-image: url('ghm.png');
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 18px 40px rgba(61,2,36,.4);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 1.8em;
+  text-align: center;
+  opacity: 0; transform: scale(.92);
+  animation: cardIn .5s cubic-bezier(.22,.9,.3,1) forwards;
+}
+@keyframes cardIn { to { opacity: 1; transform: scale(1); } }
+.question-card-counter { font-size: .8rem; color: var(--color-secondary); opacity: .8; margin-bottom: .8em; letter-spacing: .03em; }
+.question-card-text { font-family: var(--font-heading); font-size: 1.5rem; line-height: 1.4; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.35); }
+
+/* ===================== Послание в будущее (3 этап) =====================
+   Скролл теперь на .message-scroll (во всю ширину/высоту экрана), а не на
+   .message-wrap (которая уже по центру и уже самого экрана) - иначе
+   индикатор скролла браузера оказывается у края узкой центрированной
+   колонки, а не у настоящего правого края экрана. */
+.message-scroll { position: relative; z-index: 1; width: 100%; height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+.message-wrap { width: min(92vw, 560px); margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: 1.1em; padding: 1em 0; }
+.message-task { text-align: center; }
+.message-task p { line-height: 1.5; color: var(--color-text); }
+.future-letter-textarea {
+  width: 100%; min-height: 220px;
+  padding: 1.1em 1.2em;
+  border-radius: 16px;
+  border: 1.5px solid var(--color-primary-light);
+  background:
+    repeating-linear-gradient(var(--color-bg) 0px, var(--color-bg) 31px, var(--color-bg-alt) 32px),
+    var(--color-bg);
+  font-family: var(--font-script);
+  font-size: 1.15rem;
+  line-height: 32px;
+  color: var(--color-text);
+  resize: vertical;
+}
+.message-actions { display: flex; flex-direction: column; align-items: center; gap: .6em; }
+.pdf-ios-hint { font-size: .85rem; color: var(--color-primary); text-align: center; }
+
+/* ===================== Финальный экран ===================== */
+.screen[data-screen="final"] { background: #2b2338; }
+.final-bg-viewport { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+.screen[data-screen="final"] .hearts-bg .heart { color: #F2FFA4; opacity: .55; }
+.final-content { position: relative; z-index: 1; text-align: center; padding: 1em; display: flex; flex-direction: column; align-items: center; gap: 1.6em; }
+.final-content h1 { font-size: 1.6rem; max-width: 80vw; color: var(--color-primary); text-shadow: 0 2px 10px rgba(255,255,255,.55); }
+.final-actions { display: flex; flex-direction: column; gap: .8em; align-items: center; }
+
+/* ===================== Постоянные элементы ===================== */
+.stage-indicator {
+  position: fixed; top: calc(env(safe-area-inset-top) + 14px); left: calc(env(safe-area-inset-left) + 14px);
+  z-index: 400;
+  font-size: .8rem; letter-spacing: .03em;
+  padding: .4em .9em;
+  border-radius: 999px;
+  background: rgba(253,255,232,.85);
+  color: var(--color-primary);
+  box-shadow: 0 4px 14px rgba(61,2,36,.18);
+}
+.mute-btn {
+  position: fixed; top: calc(env(safe-area-inset-top) + 14px); right: calc(env(safe-area-inset-right) + 14px);
+  z-index: 400;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: rgba(253,255,232,.85);
+  box-shadow: 0 4px 14px rgba(61,2,36,.18);
+  font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ===================== Канвас салюта ===================== */
+#fireworks-canvas {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 300;
+}
+
+/* ===================== Скрытый шаблон PDF ===================== */
+#pdf-letter-page {
+  position: absolute; left: -9999px; top: 0;
+  width: 700px;
+  padding: 60px 56px;
+  background: linear-gradient(160deg, #fdf4e3, #f8e6ef);
+  font-family: var(--font-body);
+  color: var(--color-text);
+}
+#pdf-title { font-family: var(--font-heading); font-size: 2.2rem; color: var(--color-primary); margin-bottom: 1.2em; text-align: center; }
+#pdf-body { font-family: var(--font-script); font-size: 1.5rem; line-height: 1.7; white-space: pre-wrap; }
+#pdf-body p { margin: 0 0 1em; }
+#pdf-date { margin-top: 2em; font-size: 1.1rem; color: var(--color-primary); text-align: right; }
+
+/* ===================== Экран загрузки ===================== */
+.loading-screen {
+  position: fixed; inset: 0;
+  z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-bg);
+  transition: opacity .5s ease, visibility 0s linear .5s;
+}
+.loading-screen.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.loading-box {
+  display: flex; flex-direction: column; align-items: center; gap: .9em;
+  padding: 1.5em; text-align: center; max-width: 320px;
+}
+.loading-heart {
+  font-size: 2.6rem;
+  color: var(--color-primary);
+  animation: loadingPulse 1.1s ease-in-out infinite;
+}
+@keyframes loadingPulse {
+  0%, 100% { transform: scale(1); opacity: .75; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+.loading-title { font-family: var(--font-heading); font-size: 1.3rem; color: var(--color-primary); margin: 0; }
+.loading-bar {
+  width: 220px; height: 8px; border-radius: 999px;
+  background: var(--color-bg-alt);
+  overflow: hidden;
+  border: 1px solid var(--color-primary-light);
+}
+.loading-bar-fill {
+  height: 100%; width: 0%;
+  background: var(--color-primary);
+  border-radius: 999px;
+  transition: width .25s ease;
+}
+.loading-percent { margin: 0; font-size: .85rem; color: var(--color-primary-light); font-weight: 600; }
+.loading-warning { margin: 0; font-size: .78rem; color: var(--color-text); opacity: .7; }
+
+/* Подсказка "поверните телефон" - показывается ВСЕГДА (не только во время
+   загрузки), пока телефон физически в портретной ориентации; чистый CSS
+   через @media (orientation:portrait), без JS и без каких-либо
+   orientation-API - надёжнее любых "угловых" вычислений. z-index выше
+   .loading-screen (10000), чтобы подсказка перекрывала даже экран загрузки.
+   .is-mobile (ставится в JS по min(innerWidth,innerHeight)) нужен, чтобы
+   не блокировать десктопного пользователя, который просто сузил окно до
+   портретных пропорций. */
+.rotate-hint-overlay { display: none; }
+@media (orientation: portrait) {
+  html.is-mobile .rotate-hint-overlay {
+    display: flex;
+    position: fixed; inset: 0;
+    z-index: 10001;
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: .6em;
+    padding: 1.5em;
+    text-align: center;
+    background: var(--color-bg);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+  .rotate-hint-icon { font-size: 2.4rem; animation: loadingPulse 1.4s ease-in-out infinite; }
+}
+
+/* Настоящий широкий десктоп - тут
+   можно позволить фото жениха/невесты побольше, а под них слегка сузить
+   карточку викторины, чтобы они по-прежнему не перекрывались. */
+@media (min-width: 760px) and (min-height: 500px) {
+  .final-content h1 { font-size: 2.1rem; max-width: 640px; }
+  .letter-paper-body { font-size: 1.4rem; }
+  .quiz-question { font-size: 1.05rem; }
+  .message-task h2 { font-size: 1.5rem; }
+  .quiz-side { max-width: 430px; }
+  .quiz-sheet { max-width: 480px; }
+}
+
+/* Мобильный телефон (альбомный, см. .is-mobile в main.js) - кнопки,
+   викторина и фото жениха/невесты крупнее на +15%, чтобы было удобнее на
+   маленьком экране. */
+html.is-mobile .btn { padding: .9775em 2.3em; font-size: 1.15rem; }
+html.is-mobile .btn--small { padding: .575em 1.38em; font-size: .9775rem; }
+html.is-mobile .btn--cta { font-size: 1.265rem; padding: 1.15em 2.76em; }
+html.is-mobile .mute-btn { width: 48.3px; height: 48.3px; font-size: 1.265rem; }
+html.is-mobile .quiz-answer-btn { padding: .805em 1.035em; font-size: 1.058rem; }
+
+html.is-mobile .quiz-sheet { max-width: 644px; padding: 1.61em 1.265em calc(1.61em + env(safe-area-inset-bottom)); }
+html.is-mobile .quiz-counter { font-size: .897rem; max-width: 644px; }
+html.is-mobile .quiz-question { font-size: 1.15rem; max-width: 644px; }
+html.is-mobile .quiz-answers { max-width: 644px; gap: .6325em; }
+html.is-mobile .quiz-feedback { font-size: .9775rem; max-width: 644px; }
+
+html.is-mobile .quiz-side { height: 124.72vh; width: 121.67vw; max-width: 578px; min-width: 258.5px; }
+html.is-mobile .quiz-side--girl { left: -12%; }
+html.is-mobile .quiz-side--boy { right: -12%; }
+
+html.is-mobile .envelope { width: 276px; }
+
+/* "Правила игры" (вступительное модальное окно) чуть компактнее на мобильном. */
+html.is-mobile #modal-rules .modal-box { width: min(73.1vw, 357px); padding: 1.53em 1.36em; font-size: .85em; }
+
+/* Кнопка "Начать 1-й этап" в "Правила игры" на -15% от обычного мобильного .btn. */
+html.is-mobile #rules-start-btn { padding: .8314em 1.955em; font-size: .9775rem; }
+
+/* Кнопка "Перейти к следующему этапу" в окне письма (1 этап) - база минус
+   ещё 10% на мобильном (меньше, чем даже обычный десктопный размер). */
+html.is-mobile #letter-continue-btn { padding: .765em 1.8em; font-size: .9rem; }
+
+/* Кнопка "Начать игру" ещё на +15% от обычного мобильного .btn. */
+html.is-mobile #start-game-btn { padding: 1.1241em 2.645em; font-size: 1.3225rem; }
